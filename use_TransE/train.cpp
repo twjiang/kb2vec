@@ -26,8 +26,8 @@ map<int, map<int,int> > head_entity, tail_entity;
 map<int, double> tph, hpt;
 
 char buf[100000];
-int L1_flag = 0;
-string version = "bern";
+int L1_flag = 1;
+string version = "unif";
 string data_size = "all";
 
 int rand_max(int x)

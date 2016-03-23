@@ -30,6 +30,7 @@ int L1_flag = 0;
 int n = 100;
 string version;
 string data_size = "all";
+string model = "model_small_1";
 
 double sqr(double x)
 {
@@ -93,8 +94,8 @@ Others:
 *************************************************/
 void load_entity_relation_data()
 {
-    FILE *entity_file = fopen("../data/entity2id.txt","r");
-	FILE *relation_file = fopen("../data/relation2id.txt","r");
+    FILE *entity_file = fopen(("../bigcilin/"+data_size+"/entity2id.txt").c_str(),"r");
+	FILE *relation_file = fopen(("../bigcilin/"+data_size+"/relation2id.txt").c_str(),"r");
 
     int id;
     const char * split = "\t";
@@ -142,8 +143,8 @@ void load_entity_relation_data()
 
 void load_entity_relation_vec()
 {
-    FILE *relation_vec_file = fopen(("./model/model_e2/relation2vec."+version).c_str(), "r");
-    FILE *entity_vec_file = fopen(("./model/model_e2/entity2vec."+version).c_str(), "r");
+    FILE *relation_vec_file = fopen(("./model/"+model+"/relation2vec."+version).c_str(), "r");
+    FILE *entity_vec_file = fopen(("./model/"+model+"/entity2vec."+version).c_str(), "r");
 
     relation_vec.resize(relation_num);
     for (int i=0; i<relation_num;i++)
@@ -321,12 +322,12 @@ int main(int argc, char **argv)
 {
     int index;
     int method = 1;
-    ds = 0;
     
     if ((index = have_arg((char *)"-size", argc, argv)) > 0) n = atoi(argv[index+1]);
     if ((index = have_arg((char *)"-method", argc, argv)) > 0) method = atoi(argv[index+1]);
     if ((index = have_arg((char *)"-L1", argc, argv)) > 0) L1_flag = atoi(argv[index+1]);
-    if ((index = have_arg((char *)"-ds", argc, argv)) > 0) ds = atoi(argv[index+1]);
+    if ((index = have_arg((char *)"-ds", argc, argv)) > 0) data_size = argv[index+1];
+    if ((index = have_arg((char *)"-model", argc, argv)) > 0) model = argv[index+1];
 
     cout << "size = " << n << endl;
     if (method == 1)
@@ -344,16 +345,7 @@ int main(int argc, char **argv)
     else
         cout << "use L2 to calculate distance." << endl;
     
-    if (ds == 0)
-    {
-        cout << "data_size = " << "small" << endl;
-        data_size = "small";
-    }
-    else
-    {
-        cout << "data_size = " << "all" << endl;
-        data_size = "all";
-    }
+    cout << "data_size = " << data_size << endl;
 
     load_entity_relation_data();
     load_kb_data();

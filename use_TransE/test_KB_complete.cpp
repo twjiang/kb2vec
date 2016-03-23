@@ -29,6 +29,7 @@ struct CmpByValue {
   }  
 }; 
 
+vector<int> triple_h, triple_r, triple_t;
 map<string, int> entity2id, relation2id;
 map<int, string> id2entity, id2relation;
 int entity_num, relation_num;
@@ -40,6 +41,8 @@ char buf[100000];
 int L1_flag = 1;
 int n = 100;
 string version;
+string data_size = "all";
+string model = "model_small_1";
 
 double sqr(double x)
 {
@@ -56,7 +59,7 @@ Others:
 *************************************************/
 void load_KB()
 {
-    FILE *KB_file = fopen("../data/train.txt","r");
+    FILE *KB_file = fopen(("../bigcilin/"+data_size+"/train.txt").c_str(),"r");
     
     const char * split = "\t";
     char * p;
@@ -87,6 +90,43 @@ void load_KB()
     fclose(KB_file);
 }
 
+void load_test_data()
+{
+    FILE *test_file = fopen(("../bigcilin/"+data_size+"/test.txt").c_str(),"r");
+    
+    const char * split = "\t";
+    char * p;
+	while(!feof(test_file))
+    {
+        fgets(buf, sizeof(buf), test_file); 
+        
+        p = strtok(buf, split);
+        string h = p;
+        p = strtok(NULL, split);
+        if (p==NULL)
+            continue;
+        string t = p;
+        p = strtok(NULL, split);
+        string r = p;
+        r = r.substr(0, r.length()-1);// minus 1 for Windows, minus 2 for Unix
+
+        if (entity2id.count(h)==0)
+            cout << "no entity: " << h << endl;
+        if (entity2id.count(t)==0)
+            cout << "no entity: " << t << endl;
+
+        if (relation2id.count(r)==0)
+            cout << "no relation: " << t << endl;
+
+        triple_h.push_back(entity2id[h]);
+        triple_r.push_back(relation2id[r]);
+        triple_t.push_back(entity2id[t]);
+    }
+
+    cout << "test triple num = " << triple_h.size() << endl;
+    fclose(test_file);
+}
+
 /*************************************************
 Function: load_entity_relation_data()
 Description: load entity and relation data from file
@@ -97,8 +137,8 @@ Others:
 *************************************************/
 void load_entity_relation_data()
 {
-    FILE *entity_file = fopen("../data/entity2id.txt","r");
-	FILE *relation_file = fopen("../data/relation2id.txt","r");
+    FILE *entity_file = fopen(("../bigcilin/"+data_size+"/entity2id.txt").c_str(),"r");
+	FILE *relation_file = fopen(("../bigcilin/"+data_size+"/relation2id.txt").c_str(),"r");
 
     int id;
     const char * split = "\t";
@@ -146,8 +186,8 @@ void load_entity_relation_data()
 
 void load_entity_relation_vec()
 {
-    FILE *relation_vec_file = fopen(("./vec_2/relation2vec."+version).c_str(), "r");
-    FILE *entity_vec_file = fopen(("./vec_2/entity2vec."+version).c_str(), "r");
+    FILE *relation_vec_file = fopen(("./model/"+model+"/relation2vec."+version).c_str(), "r");
+    FILE *entity_vec_file = fopen(("./model/"+model+"/entity2vec."+version).c_str(), "r");
 
     relation_vec.resize(relation_num);
     for (int i=0; i<relation_num;i++)
