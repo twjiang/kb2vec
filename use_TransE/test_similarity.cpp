@@ -146,6 +146,19 @@ double calc_distance(int h, int r, int t)
     return distance;
 }
 
+double calc_entity_distance(int e1, int e2)
+{
+    double distance = 0;
+    if (L1_flag == 1)
+        for (int i = 0; i < n; i++)
+            distance += fabs(entity_vec[e1][i] - entity_vec[e2][i]);
+    else
+        for (int i = 0; i < n; i++){
+            distance += sqr(entity_vec[e1][i] - entity_vec[e2][i]);
+        }
+    return distance;
+}
+
 /*************************************************
 Function: link_prediction()
 Description: predict the ranked_link_list for given entitys
@@ -156,54 +169,27 @@ Output:
 Return: the ranked_link_map
 Others:
 *************************************************/
-map<int, double> link_prediction(int entity1_id, int entity2_id)
+map<int, double> similarity(int entity_id)
 {
-    map<int, double> ranked_link_map;
+    map<int, double> ranked_entity_map;
     double min = 10000000;
     int r_id = -1;
     double distance;
     
     for(int j = 0; j < 10; j++)
     {
-        for(int i = 0; i < relation_num; i++)
+        for(int i = 0; i < entity_num; i++)
         {
-            if (ranked_link_map.find(i) != ranked_link_map.end())
+            if ( i == entity_id || ranked_entity_map.find(i) != ranked_entity_map.end())
                 continue;
-            distance = calc_distance(entity1_id, i, entity2_id);
+            distance = calc_entity_distance(entity_id, i);
             if(distance < min)
             {
                 min = distance;
                 r_id = i;
             }
         }
-        ranked_link_map[r_id] = min;
-        min = 10000000;        
-    }
-    
-    return ranked_link_map;
-}
-
-map<int, double> entity_prediction(int entity1_id, int r_id)
-{
-    map<int, double> ranked_entity_map;
-    double min = 10000000;
-    int entity2_id = -1;
-    double distance;
-    
-    for(int j = 0; j < 10; j++)
-    {
-        for(int i = 0; i < entity_num; i++)
-        {
-            if (ranked_entity_map.find(i) != ranked_entity_map.end())
-                continue;
-            distance = calc_distance(entity1_id, r_id, i);
-            if(distance < min)
-            {
-                min = distance;
-                entity2_id = i;
-            }
-        }
-        ranked_entity_map[entity2_id] = min;
+        ranked_entity_map[r_id] = min;
         min = 10000000;        
     }
     
@@ -283,30 +269,25 @@ int main(int argc, char **argv)
     cout << "load ok." << endl;
     
     ifstream entity_pair_file;
-    entity_pair_file.open("./data_for_predict/entity_pair.txt");
+    entity_pair_file.open("./data_for_predict/entitys.txt");
     
     map<int, double> ranked_map;
     vector<PAIR> result_score_vec;
     
-    string entity1, entity2;
+    string entity;
     int entity1_id, entity2_id;
     while(!entity_pair_file.eof())
     {
         result_score_vec.clear();
-        entity_pair_file >> entity1 >> entity2;
-        if (entity2id.count(entity1)==0)
+        entity_pair_file >> entity;
+        if (entity2id.count(entity)==0)
         {
             cout << "no entity in KB: " << entity1 << endl;
             break;
         }
-        if (entity2id.count(entity2)==0)
-        {
-            cout << "no entity in KB: " << entity2 << endl;
-            break;
-        }
         cout << "=========================\n";
-        cout << entity1 << "\t" << entity2 << endl;
-        ranked_map = link_prediction(entity2id[entity1], entity2id[entity2]);
+        cout << entity << endl;
+        ranked_map = similarity(entity2id[entity]);
         for (map<int, double>::iterator it=ranked_map.begin(); it!=ranked_map.end(); ++it) {  
             result_score_vec.push_back(make_pair(it->first, it->second));  
         }  
