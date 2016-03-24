@@ -169,7 +169,7 @@ Output:
 Return: the ranked_link_map
 Others:
 *************************************************/
-map<int, double> similarity(int entity_id)
+map<int, double> similarity(int entity_id, double threshold)
 {
     map<int, double> ranked_entity_map;
     double min = 10000000;
@@ -189,6 +189,8 @@ map<int, double> similarity(int entity_id)
                 r_id = i;
             }
         }
+        if (min >= threshold)
+            break;
         ranked_entity_map[r_id] = min;
         min = 10000000;        
     }
@@ -268,33 +270,40 @@ int main(int argc, char **argv)
     load_entity_relation_vec();
     cout << "load ok." << endl;
     
-    ifstream entity_pair_file;
-    entity_pair_file.open("./data_for_predict/entitys.txt");
+    ifstream entity_file;
+    entity_file.open("./data_for_predict/entitys.txt");
+    
+    ofstream result_file;
+    result_file.open(("./model/"+model+"/test_similarity.result").c_str());
     
     map<int, double> ranked_map;
     vector<PAIR> result_score_vec;
     
     string entity;
     int entity1_id, entity2_id;
-    while(!entity_pair_file.eof())
+    while(!entity_file.eof())
     {
         result_score_vec.clear();
-        entity_pair_file >> entity;
+        entity_file >> entity;
         if (entity2id.count(entity)==0)
         {
-            cout << "no entity in KB: " << entity1 << endl;
+            cout << "no entity in KB: " << entity << endl;
             break;
         }
-        cout << "=========================\n";
-        cout << entity << endl;
-        ranked_map = similarity(entity2id[entity]);
+        result_file << "=========================\n";
+        result_file << entity << endl;
+        ranked_map = similarity(entity2id[entity], 0.7);
         for (map<int, double>::iterator it=ranked_map.begin(); it!=ranked_map.end(); ++it) {  
             result_score_vec.push_back(make_pair(it->first, it->second));  
         }  
         sort(result_score_vec.begin(), result_score_vec.end(), CmpByValue());   
         for (vector<PAIR>::iterator it=result_score_vec.begin(); it!=result_score_vec.end(); ++it) {  
-            cout << id2relation[it->first] << " => " << it->second << '\n';  
+            result_file << id2entity[it->first] << " => " << it->second << '\n';  
         }
     }
+    
+    entity_file.close();
+    result_file.close();
+    
     return 0;
 }
