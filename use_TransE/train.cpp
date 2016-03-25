@@ -467,7 +467,7 @@ int main(int argc,char **argv)
     if ((index = have_arg((char *)"-method", argc, argv)) > 0) method = atoi(argv[index+1]);
     if ((index = have_arg((char *)"-rate", argc, argv)) > 0) rate = atof(argv[index+1]);
     if ((index = have_arg((char *)"-L1", argc, argv)) > 0) L1_flag = atoi(argv[index+1]);
-    if ((index = have_arg((char *)"-ds", argc, argv)) > 0) ds = atoi(argv[index+1]);
+    if ((index = have_arg((char *)"-ds", argc, argv)) > 0) data_size = argv[index+1];
 
     cout << "size = " << n << endl;
     cout << "margin = " << margin << endl;
@@ -483,16 +483,7 @@ int main(int argc,char **argv)
     }
     cout << "rate = " << rate << endl;
     cout << "L1_flag = " << L1_flag << endl;
-    if (ds == 0)
-    {
-        cout << "data_size = " << "small" << endl;
-        data_size = "small";
-    }
-    else
-    {
-        cout << "data_size = " << "all" << endl;
-        data_size = "all";
-    }
+    cout << "data_size = " << data_size << endl;
 
     load_entity_relation_data();
     load_train_data();

@@ -5,6 +5,7 @@ Description: the implementation of TransE (paper:Translating Embeddings for Mode
 **************************************************/
 
 #include <iostream>
+#include <fstream>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -357,26 +358,12 @@ Others:
 *************************************************/
 void load_train_data()
 {
-    FILE *train_file = fopen(("../bigcilin/"+data_size+"/train.txt").c_str(),"r");
-    
-    const char * split = "\t";
-    char * p;
-	while(!feof(train_file))
+    ifstream train_file;
+    train_file.open(("../bigcilin/"+data_size+"/train.txt").c_str());
+    string h , r, t;
+	while(!train_file.eof())
     {
-        fgets(buf, sizeof(buf), train_file); 
-        
-        p = strtok(buf, split);
-        string h = p;
-        //cout << h << endl;
-        p = strtok(NULL, split);
-        if (p==NULL)
-            continue;
-        string t = p;
-        //cout << t << endl;
-        p = strtok(NULL, split);
-        string r = p;
-        r = r.substr(0, r.length()-1); // minus 1 for Windows, minus 2 for Unix
-        //cout << r <<endl;
+        train_file >> h >> t >> r;
 
         if (entity2id.count(h)==0)
             cout << "no entity: " << h << endl;
@@ -390,7 +377,7 @@ void load_train_data()
         tail_entity[relation2id[r]][entity2id[t]]++;
         train.add(entity2id[h], relation2id[r], entity2id[t]);
     }
-    fclose(train_file);
+   train_file.close();
 
     for (int i = 0; i < relation_num; i++)
     {
@@ -464,7 +451,6 @@ int main(int argc,char **argv)
     n = 100;
     margin = 1;
     method  = 1;
-    ds = 0;
     rate = 0.01;
 
     int index;
@@ -473,7 +459,7 @@ int main(int argc,char **argv)
     if ((index = have_arg((char *)"-method", argc, argv)) > 0) method = atoi(argv[index+1]);
     if ((index = have_arg((char *)"-rate", argc, argv)) > 0) rate = atof(argv[index+1]);
     if ((index = have_arg((char *)"-L1", argc, argv)) > 0) L1_flag = atoi(argv[index+1]);
-    if ((index = have_arg((char *)"-ds", argc, argv)) > 0) ds = atoi(argv[index+1]);
+    if ((index = have_arg((char *)"-ds", argc, argv)) > 0) data_size = argv[index+1];
 
     cout << "size = " << n << endl;
     cout << "margin = " << margin << endl;
@@ -489,16 +475,7 @@ int main(int argc,char **argv)
     }
     cout << "rate = " << rate << endl;
     cout << "L1_flag = " << L1_flag << endl;
-    if (ds == 0)
-    {
-        cout << "data_size = " << "small" << endl;
-        data_size = "small";
-    }
-    else
-    {
-        cout << "data_size = " << "all" << endl;
-        data_size = "all";
-    }
+    cout << "data_size = " << data_size << endl;
 
     load_entity_relation_data();
     load_train_data();
