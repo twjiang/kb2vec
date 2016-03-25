@@ -13,29 +13,17 @@ Description: the Test for kb_embedding program
 #include <cstring>
 #include <cmath>
 #include <cstdlib>
-#include <algorithm>
 
 using namespace std;
 
-typedef pair<int, double> PAIR;  
-  
-bool cmp_by_value(const PAIR& lhs, const PAIR& rhs) {  
-  return lhs.second < rhs.second;  
-}  
-  
-struct CmpByValue {  
-  bool operator()(const PAIR& lhs, const PAIR& rhs) {  
-    return lhs.second < rhs.second;  
-  }  
-}; 
-
-vector<int> triple_h, triple_r, triple_t;
 map<string, int> entity2id, relation2id;
 map<int, string> id2entity, id2relation;
 int entity_num, relation_num;
 
-vector<vector<double> > entity_vec, relation_vec;
 map<pair<int, int>, map<int, int> > is_good_triple;
+
+vector<int> triple_h, triple_r, triple_t;
+vector<vector<double> > entity_vec, relation_vec;
 
 char buf[100000];
 int L1_flag = 0;
@@ -50,21 +38,32 @@ double sqr(double x)
 }
 
 /*************************************************
-Function: load_test_data()
-Description: load test data from file
+Function: load_kb_data()
+Description: load train data from file
 Input:
 Output:
 Return:
 Others:
 *************************************************/
-void load_test_data()
+void load_kb_data()
 {
-    ifstream test_file;
-    test_file.open(("../bigcilin/"+data_size+"/test.txt").c_str());
-    string h , r, t;
-	while(!test_file.eof())
+    FILE *test_file = fopen(("../bigcilin/"+data_size+"/train.txt").c_str(),"r");
+    
+    const char * split = "\t";
+    char * p;
+	while(!feof(test_file))
     {
-        test_file >> h >> t >> r;
+        fgets(buf, sizeof(buf), test_file); 
+        
+        p = strtok(buf, split);
+        string h = p;
+        p = strtok(NULL, split);
+        if (p==NULL)
+            continue;
+        string t = p;
+        p = strtok(NULL, split);
+        string r = p;
+        r = r.substr(0, r.length()-1);// minus 1 for Windows, minus 2 for Unix
 
         if (entity2id.count(h)==0)
             cout << "no entity: " << h << endl;
@@ -77,33 +76,12 @@ void load_test_data()
         triple_h.push_back(entity2id[h]);
         triple_r.push_back(relation2id[r]);
         triple_t.push_back(entity2id[t]);
+
+        is_good_triple[make_pair(entity2id[h], relation2id[r])][entity2id[t]] = 1;
     }
 
     cout << "test triple num = " << triple_h.size() << endl;
-    test_file.close();
-}
-
-void load_KB_data()
-{
-    ifstream train_file;
-    train_file.open(("../bigcilin/"+data_size+"/train.txt").c_str());
-    string h , r, t;
-	while(!train_file.eof())
-    {
-        train_file >> h >> t >> r;
-
-        if (entity2id.count(h)==0)
-            cout << "no entity: " << h << endl;
-        if (entity2id.count(t)==0)
-            cout << "no entity: " << t << endl;
-
-        if (relation2id.count(r)==0)
-            cout << "no relation: " << t << endl;
-        
-        is_good_triple[make_pair(entity2id[h], relation2id[r])][entity2id[t]] = 1;
-    }
-    
-    train_file.close();
+    fclose(test_file);
 }
 
 /*************************************************
@@ -207,155 +185,97 @@ double calc_distance(int h, int r, int t)
 
 /*************************************************
 Function: link_prediction()
-Description: predict the ranked_link_list for given entitys
+Description: test for link prediction
 Input:
-    entity1_id: int
-    entity2_id: int
-Output:
-Return: the ranked_link_map
-Others:
-*************************************************/
-map<int, double> link_prediction(int entity1_id, int entity2_id, double threshold, int num)
-{
-    map<int, double> ranked_link_map;
-    double min = 10000000;
-    int r_id = -1;
-    double distance;
-    
-    for(int j = 0; j < num; j++)
-    {
-        for(int i = 0; i < relation_num; i++)
-        {
-            if (is_good_triple[make_pair(entity1_id, i)].count(entity2_id) > 0){
-                    continue;
-            }
-            if (ranked_link_map.find(i) != ranked_link_map.end())
-                continue;
-            distance = calc_distance(entity1_id, i, entity2_id);
-            if(distance < min)
-            {
-                min = distance;
-                r_id = i;
-            }
-        }
-        if (min >= threshold)
-            break;
-        ranked_link_map[r_id] = min;
-        min = 10000000;        
-    }
-    
-    return ranked_link_map;
-}
 
-/*************************************************
-Function: entity_prediction()
-Description: predict the ranked_link_list for given entitys
-Input:
-    entity1_id: int
-    r_id: int
 Output:
-Return: the ranked_entity_map
+Return:
 Others:
 *************************************************/
-map<int, double> entity_prediction(int entity1_id, int r_id, int num)
+void link_prediction()
 {
-    map<int, double> ranked_entity_map;
-    double min = 10000000;
-    int entity2_id = -1;
-    double distance;
-    
-    for(int j = 0; j < num; j++)
-    {
-        for(int i = 0; i < entity_num; i++)
-        {
-            if (ranked_entity_map.find(i) != ranked_entity_map.end())
-                continue;
-            distance = calc_distance(entity1_id, r_id, i);
-            if(distance < min)
-            {
-                min = distance;
-                entity2_id = i;
-            }
-        }
-        ranked_entity_map[entity2_id] = min;
-        min = 10000000;        
-    }
-    
-    return ranked_entity_map;
-}
-
-/*************************************************
-Function: find_new_triple()
-Description: due to the given KB and it's vector representation find new triple
-Input:
-    double threshold: the threshold of score for predictation
-Output:
-Return: 
-Others:
-*************************************************/
-void find_new_triple()
-{
-    map<int, double> ranked_map;
-    vector<PAIR> result_score_vec;
-    ofstream new_KB_file;
-    new_KB_file.open(("./model/"+model+"/KB_new.txt").c_str());
-    
+    int h_id, r_id, t_id, before_count, neg_count, rank1;
+    double pos_distance, neg_distance;
+    int mean_rank;
+    double hit_10;
     int rank_count = 0;
-    int rank_sum = 0;
     int hit_10_count = 0;
-    int hit_1_count = 0;
-    int before_count;
-    double neg_distance, pos_distance;
-    int rank;
+    int rank_sum = 0;
     
+    ofstream bad_rank_triple_file;
+    bad_rank_triple_file.open("bad_rank_triple.txt",ios::app);
+
+    cout << "rank1\t" << "mean_rank\t" << "hit_10" << endl;
     for (int i = 0; i < triple_h.size(); i++)
     {
-        result_score_vec.clear();
-        ranked_map = link_prediction(triple_h[i], triple_t[i], 0.7, 10);
-        if (ranked_map.size()!=0)
+        h_id = triple_h[i];
+        r_id = triple_r[i];
+        t_id = triple_t[i];
+        pos_distance = calc_distance(h_id, r_id, t_id);
+
+        before_count = 0;
+        neg_count = 0;
+        for (int j = 0; j < entity_num; j++)
         {
-            new_KB_file << id2entity[triple_h[i]] << "==" << id2entity[triple_t[i]] << "==" << id2relation[triple_r[i]];
-            for (map<int, double>::iterator it=ranked_map.begin(); it!=ranked_map.end(); ++it) {  
-                result_score_vec.push_back(make_pair(it->first, it->second));  
-            }  
-            sort(result_score_vec.begin(), result_score_vec.end(), CmpByValue());     
-            for (vector<PAIR>::iterator it=result_score_vec.begin(); it!=result_score_vec.end(); ++it) {  
-                new_KB_file << "##" << id2relation[it->first] << ":" << it->second;  
+            if (is_good_triple[make_pair(j, r_id)].count(t_id) > 0){
+                continue;
             }
-
-            before_count = 0;
-            pos_distance = calc_distance(triple_h[i], triple_r[i], triple_t[i]);
-            for (int j = 0; j < relation_num; j++)
+            else
             {
-                if (is_good_triple[make_pair(triple_h[i], j)].count(triple_t[i]) > 0){
-                    continue;
-                }
-                else
-                {
-                    neg_distance = calc_distance(triple_h[i], j, triple_t[i]);
-                    //cout << pos_distance << "\t" << neg_distance << endl;
-                    if (neg_distance < pos_distance)
-                        before_count++;
-                }
+                neg_distance = calc_distance(j, r_id, t_id);
+                //cout << pos_distance << "\t" << neg_distance << endl;
+                neg_count++;
+                if (neg_distance < pos_distance)
+                    before_count++;
             }
-            rank_count++;
-            rank = before_count + 1;
-            rank_sum += rank;
+        }
+        //cout << "--" << endl;
+        rank_count++;
+        rank1 = before_count + 1;
+        rank_sum += rank1;
 
-            if (rank <= 10)
-                hit_10_count++;
-            if (rank == 1)
-                hit_1_count++;
+        if (rank1 <= 10)
+            hit_10_count++;
 
-            double mean_rank = rank_sum / rank_count;
-            double hit_10 = ((double)hit_10_count / rank_count)*100;
-            double hit_1 = ((double)hit_1_count / rank_count)*100;
-            new_KB_file << "##rank:" << rank << " mean_rank_now:" << mean_rank << " hit_10:" << hit_10 << "% hit_1:" << hit_1 << "%" << endl;
-            new_KB_file.flush();
+        mean_rank = rank_sum / rank_count;
+        hit_10 = ((double)hit_10_count / rank_count)*100;
+        cout << rank1 << "\t" << mean_rank << "\t" << hit_10 << "%" << endl;
+        if (rank1 > 10){
+            bad_rank_triple_file << id2entity[h_id] << "\t" << id2entity[t_id] << "\t" <<id2relation[r_id] << "\t" << rank1 << endl;
+            bad_rank_triple_file.flush();
+        }
+
+        before_count = 0;
+        neg_count = 0;
+        for (int j = 0; j < entity_num; j++)
+        {
+            if (is_good_triple[make_pair(h_id, r_id)].count(j) > 0)
+                continue;
+            else
+            {
+                neg_distance = calc_distance(h_id, r_id, j);
+                //cout << pos_distance << "\t" << neg_distance << endl;
+                neg_count++;
+                if (neg_distance < pos_distance)
+                    before_count++;
+            }
+        }
+        rank_count++;
+        rank1 = before_count + 1;
+        rank_sum += rank1;
+
+        if (rank1 <= 10)
+            hit_10_count++;
+
+        mean_rank = rank_sum / rank_count;
+        hit_10 = ((double)hit_10_count / rank_count)*100;
+        cout << rank1 << "\t" << mean_rank << "\t" << hit_10 << "%" << endl;
+        if (rank1 > 10){
+            bad_rank_triple_file << id2entity[h_id] << "\t" << id2entity[t_id] << "\t" <<id2relation[r_id] << "\t" << rank1 << endl;
+            bad_rank_triple_file.flush();
         }
     }
-    
-    new_KB_file.close();
+    bad_rank_triple_file.close();
 }
 
 /*************************************************
@@ -402,6 +322,7 @@ int main(int argc, char **argv)
 {
     int index;
     int method = 1;
+    
     if ((index = have_arg((char *)"-size", argc, argv)) > 0) n = atoi(argv[index+1]);
     if ((index = have_arg((char *)"-method", argc, argv)) > 0) method = atoi(argv[index+1]);
     if ((index = have_arg((char *)"-L1", argc, argv)) > 0) L1_flag = atoi(argv[index+1]);
@@ -423,20 +344,17 @@ int main(int argc, char **argv)
         cout << "use L1 to calculate distance." << endl;
     else
         cout << "use L2 to calculate distance." << endl;
+    
+    cout << "data_size = " << data_size << endl;
 
     load_entity_relation_data();
-    
+    load_kb_data();
+
     cout << "load entity and relation embedding data ... ..." << endl;
     load_entity_relation_vec();
     cout << "load ok." << endl;
-    load_KB_data();
-    cout << "load test data ... ..." << endl;
-    load_test_data();
-    cout << "load ok." << endl;
-    
-    cout << "finding ... ..." << endl;
-    
-    find_new_triple();
+
+    link_prediction();
 
     return 0;
 }

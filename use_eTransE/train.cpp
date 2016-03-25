@@ -167,6 +167,7 @@ private:
                 {   
                     int j = rand_max(triple_h.size());
                     int negtive_id = rand_max(entity_num);
+                    int negtive_r_id = rand_max(relation_num);
 
                     double pr = 0;
                     if (method == 1)
@@ -188,6 +189,11 @@ private:
 
                         train_kb(triple_h[j], triple_r[j], triple_t[j], triple_h[j], triple_r[j], negtive_id);
                     }
+                    
+                    while (in_train[make_pair(triple_h[j],negtive_r_id)].count(triple_t[j])>0)
+                            negtive_r_id = rand_max(relation_num);
+
+                    train_kb(triple_h[j], triple_r[j], triple_t[j], triple_h[j], negtive_r_id, triple_t[j]);
 
                     vec_norm(entity_vec_tmp[triple_h[j]]);
                     vec_norm(entity_vec_tmp[triple_t[j]]);
