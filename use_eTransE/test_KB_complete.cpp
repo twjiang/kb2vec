@@ -298,7 +298,7 @@ void find_new_triple()
     map<int, double> ranked_map;
     vector<PAIR> result_score_vec;
     ofstream new_KB_file;
-    new_KB_file.open(("./model/"+model+"/KB_new.txt").c_str());
+    new_KB_file.open(("./model/"+model+"/KB_new_1.0.txt").c_str());
     
     int rank_count = 0;
     int rank_sum = 0;
@@ -311,7 +311,7 @@ void find_new_triple()
     for (int i = 0; i < triple_h.size(); i++)
     {
         result_score_vec.clear();
-        ranked_map = link_prediction(triple_h[i], triple_t[i], 0.7, 10);
+        ranked_map = link_prediction(triple_h[i], triple_t[i], 1.0, 10);
         if (ranked_map.size()!=0)
         {
             new_KB_file << id2entity[triple_h[i]] << "==" << id2entity[triple_t[i]] << "==" << id2relation[triple_r[i]];
@@ -327,6 +327,9 @@ void find_new_triple()
             pos_distance = calc_distance(triple_h[i], triple_r[i], triple_t[i]);
             for (int j = 0; j < relation_num; j++)
             {
+                if (j == triple_r[i]){
+                    continue;
+                }
                 if (is_good_triple[make_pair(triple_h[i], j)].count(triple_t[i]) > 0){
                     continue;
                 }
@@ -334,8 +337,11 @@ void find_new_triple()
                 {
                     neg_distance = calc_distance(triple_h[i], j, triple_t[i]);
                     //cout << pos_distance << "\t" << neg_distance << endl;
-                    if (neg_distance < pos_distance)
+                    if (neg_distance < pos_distance){
+                        //cout << id2relation[j] << endl;
+                        //cout << pos_distance << "\t" << neg_distance << endl;
                         before_count++;
+                    }
                 }
             }
             rank_count++;
