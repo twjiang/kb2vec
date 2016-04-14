@@ -12,6 +12,7 @@ Description: the implementation of TransE (paper:Translating Embeddings for Mode
 #include <cmath>
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 
 using namespace std;
@@ -20,6 +21,7 @@ using namespace std;
 
 map<string, int> entity2id, relation2id;
 map<int, string> id2entity, id2relation;
+map<string, int> entity2count, relation2count;
 int entity_num, relation_num;
 
 /* the number of tail or head for a head or tail entity in the given relation */
@@ -163,24 +165,13 @@ private:
             for (int batch = 0; batch < nbatches; batch++)
             {
                 entity_vec_tmp = entity_vec;
-                relation_vec_tmp = relation_vec; 
-                /* for (int i=0; i<entity_num; i++)
-                {
-                    for (int ii=0; ii<n; ii++)
-                        entity_vec_tmp[i][ii] = entity_vec[i][ii];
-                } */
-               
-                for (int i=0; i<relation_num; i++)
-                {
-                    for (int ii=0; ii<n; ii++)
-                        relation_vec_tmp[i][ii] = relation_vec[i][ii];
-                }
-                
+                relation_vec_tmp = relation_vec;
                 for (int k = 0; k < batch_size; k++)
                 {   
                     int j = rand_max(triple_h.size());
                     int negtive_id = rand_max(entity_num);
                     int negtive_r_id = rand_max(relation_num);
+                    set<int> negtive_id_set;
 
                     double pr = 0;
                     if (method == 1)
@@ -194,6 +185,20 @@ private:
                             negtive_id = rand_max(entity_num);
 
                         train_kb(triple_h[j], triple_r[j], triple_t[j], negtive_id, triple_r[j], triple_t[j]);
+                        
+                        negtive_id_set.insert(negtive_id);
+
+                        for (int kk = 0; kk < 5; kk ++)
+                        {
+                            negtive_id = rand_max(entity_num);
+                        
+                            while (in_train[make_pair(negtive_id,triple_r[j])].count(triple_t[j])>0 || negtive_id_set.find(negtive_id)!=negtive_id_set.end())
+                                negtive_id = rand_max(entity_num);
+                            
+                            negtive_id_set.insert(negtive_id);
+
+                            train_kb(triple_h[j], triple_r[j], triple_t[j], negtive_id, triple_r[j], triple_t[j]);
+                        }
                     }
                     else
                     {
@@ -201,15 +206,25 @@ private:
                             negtive_id = rand_max(entity_num);
 
                         train_kb(triple_h[j], triple_r[j], triple_t[j], triple_h[j], triple_r[j], negtive_id);
+                        
+                        negtive_id_set.insert(negtive_id);
+                        for (int kk = 0; kk < 5; kk ++)
+                        {
+                            negtive_id = rand_max(entity_num);
+                        
+                            while (in_train[make_pair(triple_h[j],triple_r[j])].count(negtive_id)>0 || negtive_id_set.find(negtive_id)!=negtive_id_set.end())
+                                negtive_id = rand_max(entity_num);
+                            
+                            negtive_id_set.insert(negtive_id);
+                            train_kb(triple_h[j], triple_r[j], triple_t[j], triple_h[j], triple_r[j], negtive_id);
+                        }
                     }
                     
-                    if (rand()%1000 < 500){
-                        while (in_train[make_pair(triple_h[j],negtive_r_id)].count(triple_t[j])>0)
+                    while (in_train[make_pair(triple_h[j],negtive_r_id)].count(triple_t[j])>0)
                             negtive_r_id = rand_max(relation_num);
 
-                        train_kb(triple_h[j], triple_r[j], triple_t[j], triple_h[j], negtive_r_id, triple_t[j]);
-                    }
-                    
+                    train_kb(triple_h[j], triple_r[j], triple_t[j], triple_h[j], negtive_r_id, triple_t[j]);
+
                     vec_norm(entity_vec_tmp[triple_h[j]]);
                     vec_norm(entity_vec_tmp[triple_t[j]]);
                     vec_norm(entity_vec_tmp[negtive_id]);
@@ -218,17 +233,6 @@ private:
                 //cout << loss_value << endl;
                 entity_vec = entity_vec_tmp;
                 relation_vec = relation_vec_tmp;
-/*                 for (int i=0; i<entity_num; i++)
-                {
-                    for (int ii=0; ii<n; ii++)
-                        entity_vec[i][ii] = entity_vec_tmp[i][ii];
-                }
-               
-                for (int i=0; i<relation_num; i++)
-                {
-                    for (int ii=0; ii<n; ii++)
-                        relation_vec[i][ii] = relation_vec_tmp[i][ii];
-                } */
                 //cout << batch << endl;
             }
             cout << "[info] epoch:" << epoch <<'\t'<< loss_value <<endl;
@@ -397,7 +401,11 @@ void load_train_data()
 
         if (relation2id.count(r)==0)
             cout << "no relation: " << r << endl;
-
+        
+        entity2count[h]++;
+        entity2count[t]++;
+        relation2count[r]++;
+        
         head_entity[relation2id[r]][entity2id[h]]++;
         tail_entity[relation2id[r]][entity2id[t]]++;
         train.add(entity2id[h], relation2id[r], entity2id[t]);

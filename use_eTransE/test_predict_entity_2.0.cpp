@@ -32,7 +32,12 @@ struct CmpByValue {
 vector<int> triple_h, triple_r, triple_t;
 map<string, int> entity2id, relation2id;
 map<int, string> id2entity, id2relation;
+map<string, int> entity2count, relation2count;
 int entity_num, relation_num;
+
+/* the number of tail or head for a head or tail entity in the given relation */
+map<int, map<int,int> > head_entity, tail_entity;
+map<int, double> tph, hpt;
 
 vector<vector<double> > entity_vec, relation_vec;
 map<pair<int, int>, map<int, int> > is_good_triple;
@@ -100,10 +105,39 @@ void load_KB_data()
         if (relation2id.count(r)==0)
             cout << "no relation: " << t << endl;
         
+        entity2count[h]++;
+        entity2count[t]++;
+        relation2count[r]++;
+        
+        head_entity[relation2id[r]][entity2id[h]]++;
+        tail_entity[relation2id[r]][entity2id[t]]++;
+        
         is_good_triple[make_pair(entity2id[h], relation2id[r])][entity2id[t]] = 1;
     }
     
     train_file.close();
+    
+    for (int i = 0; i < relation_num; i++)
+    {
+        double sort_num=0, total_num=0;
+        for (map<int,int>::iterator it = head_entity[i].begin(); it != head_entity[i].end(); it++)
+        {
+            sort_num++;
+            total_num += it->second;
+        }
+        tph[i] = total_num / sort_num;
+    }
+
+    for (int i = 0; i < relation_num; i++)
+    {
+        double sort_num=0, total_num=0;
+        for (map<int,int>::iterator it = tail_entity[i].begin(); it != tail_entity[i].end(); it++)
+        {
+            sort_num++;
+            total_num += it->second;
+        }
+        hpt[i] = total_num / sort_num;
+    }
 }
 
 /*************************************************
@@ -345,7 +379,13 @@ void test_predict_entity()
     map<int, double> ranked_map;
     vector<PAIR> result_score_vec;
     ofstream result_file;
+    ofstream result_right_file;
+    ofstream result_wrong_file1;
+    ofstream result_wrong_file2;
     result_file.open(("./model/"+model+"/test_predict_entity.result").c_str());
+    result_right_file.open(("./model/"+model+"/test_predict_entity_right.result").c_str());
+    result_wrong_file1.open(("./model/"+model+"/test_predict_entity_wrong_1.result").c_str());
+    result_wrong_file2.open(("./model/"+model+"/test_predict_entity_wrong_2.result").c_str());
     
     int hit_10_count = 0;
     int hit_1_count = 0;
@@ -388,13 +428,28 @@ void test_predict_entity()
                 }
             }
             if (hit_10)
+            {
                 hit_10_count++;
+                result_right_file << id2entity[triple_h[i]] << "==" << id2entity[triple_t[i]] << "==" << id2relation[triple_r[i]];
+                result_right_file << "##" << entity2count[id2entity[triple_h[i]]] << "##" << entity2count[id2entity[triple_t[i]]] << "##" << relation2count[id2relation[triple_r[i]]] << "##" << tph[triple_r[i]]/(tph[triple_r[i]]+hpt[triple_r[i]]) << endl;
+            }
+            else
+            {
+                result_wrong_file1 << id2entity[triple_h[i]] << "==" << id2entity[triple_t[i]] << "==" << id2relation[triple_r[i]];
+                result_wrong_file1 << "##" << entity2count[id2entity[triple_h[i]]] << "##" << entity2count[id2entity[triple_t[i]]] << "##" << relation2count[id2relation[triple_r[i]]] << "##" << tph[triple_r[i]]/(tph[triple_r[i]]+hpt[triple_r[i]]) << endl;
+            }
+            
             if (hit_1)
                 hit_1_count++;
             
             result_file << "##" << hit_10 << "##" << hit_1 << "##hit_10_p:" << ((double)hit_10_count / count)*100 << "% hit_1_p:" << ((double)hit_1_count / count)*100 << "%" << " hit_simi_p["<< simi <<"]:" << ((double)simi_count / count)*100 << "%"; 
             
             result_file << endl;
+        }
+        else
+        {
+            result_wrong_file2 << id2entity[triple_h[i]] << "==" << id2entity[triple_t[i]] << "==" << id2relation[triple_r[i]];
+            result_wrong_file2 << "##" << entity2count[id2entity[triple_h[i]]] << "##" << entity2count[id2entity[triple_t[i]]] << "##" << relation2count[id2relation[triple_r[i]]] << "##" << tph[triple_r[i]]/(tph[triple_r[i]]+hpt[triple_r[i]]) << endl;
         }
         if (i % 10 == 0)
         {
@@ -403,6 +458,9 @@ void test_predict_entity()
     }
     
     result_file.close();
+    result_wrong_file1.close();
+    result_wrong_file2.close();
+    result_right_file.close();
 }
 
 /*************************************************

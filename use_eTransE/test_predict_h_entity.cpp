@@ -257,7 +257,7 @@ Output:
 Return: the ranked_entity_map
 Others:
 *************************************************/
-map<int, double> entity_prediction(int entity1_id, int r_id, double threshold, int e_rank, int r_rank)
+map<int, double> entity_prediction(int entity2_id, int r_id, double threshold, int e_rank, int r_rank)
 {
     map<int, double> predict_entity_map_tmp;
     map<int, double> predict_entity_map;
@@ -269,27 +269,18 @@ map<int, double> entity_prediction(int entity1_id, int r_id, double threshold, i
     
     for(int j = 0; j < entity_num; j++)
     {
-        if (is_good_triple[make_pair(entity1_id, r_id)].count(j) > 0){
+        if (is_good_triple[make_pair(j, r_id)].count(entity2_id) > 0){
                 continue;
         }
-        distance = calc_distance(entity1_id, r_id, j);
+        distance = calc_distance(j, r_id, entity2_id);
         if(distance < threshold)
         {
-            ranked_map = link_prediction(entity1_id, j, threshold, r_rank);
+            ranked_map = link_prediction(j, entity2_id, threshold, r_rank);
             if (ranked_map.size()!=0)
             {
                 if (ranked_map.find(r_id) != ranked_map.end())
                 {
-                    int rank = 1;
-                    for (map<int, double>::iterator it=ranked_map.begin(); it!=ranked_map.end(); ++it)
-                    {
-                        if (it->first == r_id)
-                            continue;
-                        //cout << it->second << " " << ranked_map[r_id] << endl;
-                        if (it->second < ranked_map[r_id])
-                            rank ++;
-                    }
-                    predict_entity_map_tmp[j] = rank*distance;
+                    predict_entity_map_tmp[j] = distance;
                 }
             }
             //predict_entity_map_tmp[j] = distance;
@@ -314,22 +305,9 @@ map<int, double> entity_prediction(int entity1_id, int r_id, double threshold, i
         }  
         predict_entity_map[min_id] = min;
         min = 10000000;
-    } 
+    }
     
     return predict_entity_map;
-}
-
-double calc_entity_distance(int e1, int e2)
-{
-    double distance = 0;
-    if (L1_flag == 1)
-        for (int i = 0; i < n; i++)
-            distance += fabs(entity_vec[e1][i] - entity_vec[e2][i]);
-    else
-        for (int i = 0; i < n; i++){
-            distance += sqr(entity_vec[e1][i] - entity_vec[e2][i]);
-        }
-    return distance;
 }
 
 /*************************************************
@@ -345,17 +323,16 @@ void test_predict_entity()
     map<int, double> ranked_map;
     vector<PAIR> result_score_vec;
     ofstream result_file;
-    result_file.open(("./model/"+model+"/test_predict_entity.result").c_str());
+    result_file.open(("./model/"+model+"/test_predict_h_entity.result").c_str());
     
     int hit_10_count = 0;
     int hit_1_count = 0;
     int count = 0;
-    int simi_count = 0;
     
     for (int i = 0; i < triple_h.size(); i++)
     {
         result_score_vec.clear();
-        ranked_map = entity_prediction(triple_h[i], triple_r[i], 1.0, 10, 10);
+        ranked_map = entity_prediction(triple_t[i], triple_r[i], 1.0, 10, 10);
         if (ranked_map.size()!=0)
         {
             count++;
@@ -363,8 +340,6 @@ void test_predict_entity()
             int rank = 0;
             int hit_10 = 0;
             int hit_1 = 0;
-            double simi = 0;
-            
             result_file << id2entity[triple_h[i]] << "==" << id2entity[triple_t[i]] << "==" << id2relation[triple_r[i]];  
             result_file << ":" << calc_distance(triple_h[i], triple_r[i], triple_t[i]);
             for (map<int, double>::iterator it=ranked_map.begin(); it!=ranked_map.end(); ++it) {  
@@ -374,13 +349,7 @@ void test_predict_entity()
             for (vector<PAIR>::iterator it=result_score_vec.begin(); it!=result_score_vec.end(); ++it) {  
                 result_file << "##" << id2entity[it->first] << ":" << it->second;  
                 rank++;
-                if (rank == 1)
-                {
-                    simi = calc_entity_distance(it->first, triple_t[i]);
-                    if (simi < 0.985)
-                        simi_count++;
-                }
-                if (it->first == triple_t[i])
+                if (it->first == triple_h[i])
                 {
                     hit_10 = 1;
                     if (rank == 1)
@@ -392,7 +361,7 @@ void test_predict_entity()
             if (hit_1)
                 hit_1_count++;
             
-            result_file << "##" << hit_10 << "##" << hit_1 << "##hit_10_p:" << ((double)hit_10_count / count)*100 << "% hit_1_p:" << ((double)hit_1_count / count)*100 << "%" << " hit_simi_p["<< simi <<"]:" << ((double)simi_count / count)*100 << "%"; 
+            result_file << "##hit_10:" << ((double)hit_10_count / count)*100 << "% hit_1:" << ((double)hit_1_count / count)*100 << "%"; 
             
             result_file << endl;
         }

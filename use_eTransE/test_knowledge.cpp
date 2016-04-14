@@ -63,7 +63,7 @@ void load_kb_data()
         string t = p;
         p = strtok(NULL, split);
         string r = p;
-        r = r.substr(0, r.length()-1);// minus 1 for Windows, minus 2 for Unix
+        r = r.substr(0, r.length()-2);// minus 1 for Windows, minus 2 for Unix
 
         if (entity2id.count(h)==0)
             cout << "no entity: " << h << endl;

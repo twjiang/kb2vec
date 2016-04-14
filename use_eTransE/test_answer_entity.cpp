@@ -269,10 +269,11 @@ map<int, double> entity_prediction(int entity1_id, int r_id, double threshold, i
     
     for(int j = 0; j < entity_num; j++)
     {
-        if (is_good_triple[make_pair(entity1_id, r_id)].count(j) > 0){
-                continue;
-        }
         distance = calc_distance(entity1_id, r_id, j);
+        if (is_good_triple[make_pair(entity1_id, r_id)].count(j) > 0){
+            predict_entity_map_tmp[j] = distance;
+            continue;
+        }
         if(distance < threshold)
         {
             ranked_map = link_prediction(entity1_id, j, threshold, r_rank);
@@ -345,7 +346,7 @@ void test_predict_entity()
     map<int, double> ranked_map;
     vector<PAIR> result_score_vec;
     ofstream result_file;
-    result_file.open(("./model/"+model+"/test_predict_entity.result").c_str());
+    result_file.open(("./model/"+model+"/test_answer_entity.result").c_str());
     
     int hit_10_count = 0;
     int hit_1_count = 0;
@@ -374,10 +375,16 @@ void test_predict_entity()
             for (vector<PAIR>::iterator it=result_score_vec.begin(); it!=result_score_vec.end(); ++it) {  
                 result_file << "##" << id2entity[it->first] << ":" << it->second;  
                 rank++;
+                if (is_good_triple[make_pair(triple_h[i], triple_r[i])].count(it->first) > 0)
+                {
+                    hit_10 = 1;
+                    if (rank == 1)
+                        hit_1 = 1;
+                }
                 if (rank == 1)
                 {
                     simi = calc_entity_distance(it->first, triple_t[i]);
-                    if (simi < 0.985)
+                    if (simi < 0.985 || is_good_triple[make_pair(triple_h[i], triple_r[i])].count(it->first) > 0)
                         simi_count++;
                 }
                 if (it->first == triple_t[i])
@@ -392,7 +399,7 @@ void test_predict_entity()
             if (hit_1)
                 hit_1_count++;
             
-            result_file << "##" << hit_10 << "##" << hit_1 << "##hit_10_p:" << ((double)hit_10_count / count)*100 << "% hit_1_p:" << ((double)hit_1_count / count)*100 << "%" << " hit_simi_p["<< simi <<"]:" << ((double)simi_count / count)*100 << "%"; 
+            result_file << "##" << hit_10 << "##" << hit_1 << "##hit_10:" << ((double)hit_10_count / count)*100 << "% hit_1:" << ((double)hit_1_count / count)*100 << "%" << " hit_simi["<< simi <<"]:" << ((double)simi_count / count)*100 << "%"; 
             
             result_file << endl;
         }

@@ -290,15 +290,18 @@ int main(int argc, char **argv)
             cout << "no entity in KB: " << entity << endl;
             break;
         }
-        result_file << "=========================\n";
-        result_file << entity << endl;
-        ranked_map = similarity(entity2id[entity], 0.7);
-        for (map<int, double>::iterator it=ranked_map.begin(); it!=ranked_map.end(); ++it) {  
-            result_score_vec.push_back(make_pair(it->first, it->second));  
-        }  
-        sort(result_score_vec.begin(), result_score_vec.end(), CmpByValue());   
-        for (vector<PAIR>::iterator it=result_score_vec.begin(); it!=result_score_vec.end(); ++it) {  
-            result_file << id2entity[it->first] << " => " << it->second << '\n';  
+        ranked_map = similarity(entity2id[entity], 0.985);
+        if(ranked_map.size()!=0)
+        {
+            result_file << entity ;
+            for (map<int, double>::iterator it=ranked_map.begin(); it!=ranked_map.end(); ++it) {  
+                result_score_vec.push_back(make_pair(it->first, it->second));  
+            }  
+            sort(result_score_vec.begin(), result_score_vec.end(), CmpByValue());   
+            for (vector<PAIR>::iterator it=result_score_vec.begin(); it!=result_score_vec.end(); ++it) {  
+                result_file << "#" << id2entity[it->first] << ":" << it->second;  
+            }
+            result_file << endl;
         }
     }
     
